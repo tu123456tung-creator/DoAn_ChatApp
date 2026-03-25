@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Phần Mềm Chat Online - Đồ Án</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-slate-900 text-white h-screen flex flex-col font-sans">
+    <header class="p-4 bg-slate-800 shadow-xl flex justify-between items-center border-b border-slate-700">
+        <h1 class="font-bold text-2xl text-blue-400">💬 ChatPro Online</h1>
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+            <span class="text-sm font-medium text-slate-300">Đang hoạt động</span>
+        </div>
+    </header>
+
+    <main id="chat-box" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-950">
+        </main>
+
+    <footer class="p-4 bg-slate-800">
+        <form id="chat-form" class="flex gap-3 max-w-5xl mx-auto">
+            <input id="msg" type="text" placeholder="Nhập nội dung tin nhắn..." required
+                   class="flex-1 bg-slate-700 p-4 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all border border-slate-600">
+            <button class="bg-blue-600 hover:bg-blue-500 px-8 py-4 rounded-xl font-bold shadow-lg transition-transform active:scale-95">
+                GỬI NGAY
+            </button>
+        </form>
+    </footer>
+
+    <script>
+        const socket = io();
+        const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
+        const myUser = "Người dùng_" + Math.floor(Math.random() * 100);
+
+        // Load lịch sử từ Database
+        fetch('/messages').then(res => res.json()).then(msgs => msgs.forEach(appendMessage));
+
+        // Gửi tin nhắn mới (Thêm)
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const content = document.getElementById('msg').value;
+            if(content) {
+                socket.emit('chatMessage', { user: myUser, content });
+                document.getElementById('msg').value = '';
+            }
+        });
+
+        // Nhận tin nhắn mới
+        socket.on('message', appendMessage);
+
+        function appendMessage(data) {
+            const div = document.createElement('div');
+            const isMe = data.user === myUser;
+            div.className = `flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`;
+            div.innerHTML = `
+                <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-100'} p-4 rounded-2xl max-w-[70%] shadow-lg relative group">
+                    <p class="text-[10px] opacity-70 mb-1 font-bold">${data.user}</p>
+                    <p class="text-md">${data.content}</p>
+                    <button onclick="deleteMsg('${data._id}')" title="Xóa tin nhắn" 
+                            class="hidden group-hover:block absolute -top-2 -right-2 bg-red-500 hover:bg-red-400 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center transition">✕</button>
+                </div>
+            `;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Xóa tin nhắn (Xóa)
+        async function deleteMsg(id) {
+            if(confirm("Bạn có chắc muốn xóa tin nhắn này không?")) {
+                await fetch(`/messages/${id}`, { method: 'DELETE' });
+                location.reload(); 
+            }
+        }
+    </script>
+</body>
+</html>
